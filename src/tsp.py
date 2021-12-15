@@ -1,8 +1,8 @@
 from typing import List, Dict
 from numpy import random
 
-from dna import Oligonucleotide
-from pool import Pool
+from dna import Oligonucleotide, print_dna_strands
+from pool import Pool, Gel
 
 
 class TravelSalesmanProblem:
@@ -12,7 +12,7 @@ class TravelSalesmanProblem:
         self.dna_size = 10
         self.reaction_time = 20
         self.pool = None
-        self.n_primers = 50
+        self.n_amplifications = 2
         self.initial_oligonucleotides = None
         self.vertices = None
 
@@ -25,26 +25,42 @@ class TravelSalesmanProblem:
         self.pool = Pool(self.initial_oligonucleotides)
         self.create_random_paths()
         self.amplify_start_and_end_dna(start, end)
+        self.get_strands_with_size(len(adj_list.keys()))
 
     def create_random_paths(self):
         print("Creating random paths...")
         self.pool.annealing(reaction_time=self.reaction_time)
-        self.pool.print_strands()
+        print_dna_strands(self.pool.get_dna_strands())
 
     def amplify_start_and_end_dna(self, start, end):
-        print("Denaturing...")
-        self.pool.denaturing()
-        self.pool.print_strands()
+        start_primer = self.create_primer(self.vertices[start])
+        end_primer = self.create_primer(Oligonucleotide.complement(self.vertices[end]))
 
-        print("Adding primers")
-        start_primer = Oligonucleotide.primer(self.vertices[start])
-        end_primer = Oligonucleotide.primer(self.vertices[end])
+        for i in range(self.n_amplifications):
+            print("Denaturing...")
+            self.pool.denaturing()
+            print_dna_strands(self.pool.get_dna_strands())
 
-        self.pool.add_oligonucleotides(Oligonucleotide.copy(start_primer) for x in range(self.n_primers))
-        self.pool.add_oligonucleotides(Oligonucleotide.copy(end_primer) for x in range(self.n_primers))
+            print("Adding primers")
+            self.pool.add_oligonucleotides(Oligonucleotide.copy(start_primer) for x in range(2 ^ i))
+            self.pool.add_oligonucleotides(Oligonucleotide.copy(end_primer) for x in range(2 ^ i))
 
-        self.pool.annealing(self.reaction_time)
-        self.pool.print_strands()
+            self.pool.annealing_primers(self.reaction_time)
+            print_dna_strands(self.pool.get_dna_strands())
+
+            print("Performing polymerase_elongation")
+
+            self.pool.polymerase_chain_reaction()
+            print_dna_strands(self.pool.get_dna_strands())
+
+    def get_strands_with_size(self, size):
+        print("Placing strands into gel")
+        gel = Gel(self.pool.get_dna_strands())
+
+        gel.run()
+
+        print(str(size))
+        print_dna_strands(gel.get_strand_with_size(size))
 
     # Create a list of oligonucleotides representing the edges and the complements
     def create_oligonucleotides(self, adj_list: Dict[chr, List[chr]], dna_size, start, end):
@@ -70,6 +86,10 @@ class TravelSalesmanProblem:
                         end
                     )
                 )
+                if destination_vertex == end:
+                    end_oligo = Oligonucleotide.complement(vertices[destination_vertex])
+                    end_oligo.name += "-co"
+                    oligonucleotides.append(end_oligo)
 
                 # For each edge i->j we add i-complement to the mix
                 oligonucleotides.append(Oligonucleotide.copy(complement))
@@ -81,6 +101,12 @@ class TravelSalesmanProblem:
             oligonucleotides += [Oligonucleotide.copy(item) for item in oligonucleotides]
 
         return oligonucleotides
+
+    @staticmethod
+    def create_primer(oligonucleotide):
+        oligonucleotide.is_primer = True
+        oligonucleotide.name += "p"
+        return oligonucleotide
 
     @staticmethod
     def create_edge_oligonucleotide(oligo_a, oligo_b, start, end):
