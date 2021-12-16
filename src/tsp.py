@@ -44,9 +44,9 @@ class TravelSalesmanProblem:
             print("Adding primers")
             self.pool.add_oligonucleotides(Oligonucleotide.copy(start_primer) for x in range(2 ^ i))
             self.pool.add_oligonucleotides(Oligonucleotide.copy(end_primer) for x in range(2 ^ i))
-
             self.pool.annealing_primers(self.reaction_time)
             print_dna_strands(self.pool.get_dna_strands())
+
 
             print("Performing polymerase_elongation")
 
@@ -86,6 +86,7 @@ class TravelSalesmanProblem:
                         end
                     )
                 )
+
                 if destination_vertex == end:
                     end_oligo = Oligonucleotide.complement(vertices[destination_vertex])
                     end_oligo.name += "-co"

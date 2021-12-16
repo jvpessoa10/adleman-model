@@ -87,8 +87,6 @@ class Gel:
 
             self.strands_with_distance.append((strand_left, strand_right, size))
 
-        print("Finished")
-
     def get_strand_with_size(self, size):
         return [(left, right) for (left, right, distance) in self.strands_with_distance if distance == size]
 
